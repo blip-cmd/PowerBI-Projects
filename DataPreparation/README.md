@@ -1,113 +1,88 @@
-Documentation 
+Group 1 Dataset: `Retail_Sales_Data.csv`
 
- Group 1: Retail_Sales_Data.csv 
+Dataset Description
 
-Dataset Descriptions: 
-● Retail Sales: Retail transactions from multiple store branches with sales, 
-payment, and satisfaction details. 
-- 1199 Transactions
-Transaction_ID,Date,Branch,Product_Category,Product_Name,Quantity,Unit_Price,Total_Sales(cedis),Payment_Method,Customer_Satisfaction
-sample of 3:
-T1000,07/01/2024,Kumasi,Electronics,Smartwatch,7,,,mobile money,4
-T1001,28/06/2024,Kumasi,Groceries,Rice,3,173.42,520.26,Cash,6
-T1002,04-07-24,Takoradi,Electronics,Charger,7,,,Mobile Money,6
+The dataset represents **retail sales transactions** collected from multiple store branches. It includes details such as sales amount, product category, payment method, and customer satisfaction ratings.
 
-Data Cleaning Steps
-step - purpose
-different date formats
-empty transaction-id
-missing values- empty 
-check unique categories
-inconsistent text case
-mixed integers/string variables for satisfaction column
-trim
+**Key Information:**
+- **Total Records:** 1,199 transactions
+- **Columns:**
+  - Transaction_ID
+  - Date
+  - Branch
+  - Product_Category
+  - Product_Name
+  - Quantity
+  - Unit_Price
+  - Total_Sales (Cedis)
+  - Payment_Method
+  - Customer_Satisfaction
 
-9 blanks in QUANTITY column
-1-10 --> no outlier ->> use average value to fill (5.6 -> 6)
-Transform: replace null with 6
-
-unit_price
-12 N/A -> replaced with null
-change type to decimal
-- right-skewed (mean < median)
-22 empty => transform - impute with median(307.30), because of outliers and high standard deviation.
-
-total_sales
-convert to decimals
- find median(1446.15) < find mean(1609.02),
-skewed -> impute median for robustness to outliers
-
-payment_method
-Capitalize Each Word
-
-customer_satisfaction
-good: 23 rows
-blank: 35 rows
-count: 300
-guess is: 1(worst)-6(best) : worst,worse,bad,good,better,best
-so good should be 4, so impute
-convert to whole number
-
-WILL DO WHENVER WE ALL OUR ON CALL 
-{
-replace null with average rating for same item ( we can look for better way later)
-- find avearge rating for each product_name
-
-Per each unique product_name:
-select product_name, customer_satisfaction 
-	filter by product_name 	
-		remove records with null in customer_satisfaction 
-			return averageValue in customer_satisfaction 
-gpr, merge left outer, addCustomColumn
-if [Customer_Satisfaction] = null then [Grped.AverageRating] else [Customer_Satisfaction]
-RESULT: customer_satisfaction_filled column
-
-used graphs for item against customer rating
-}
-
-transaction_id
-Split by Non-Digit to Digit
-Replace empty_string with T
-Fill Down on Digit column
-Merge back to transaction_id_filled
-Select transaction_id_filled, date. Remove Other columns
-Primary table: Partially Cleaned One
-SecondaryTable: transaction_id_filled, date.
-Merge 
-
-LEFT WITH DATE COLUMN
-- oops :transaction_id_filled merge failed. we need better stable key other than Date
+Sample Rows:
+| Transaction_ID | Date       | Branch   | Product_Category | Product_Name | Quantity | Unit_Price | Total_Sales | Payment_Method | Customer_Satisfaction |
+|-----------------|------------|----------|------------------|--------------|-----------|-------------|--------------|----------------|------------------------|
+| T1000 | 07/01/2024 | Kumasi | Electronics | Smartwatch | 7 | null | null | Mobile Money | 4 |
+| T1001 | 28/06/2024 | Kumasi | Groceries | Rice | 3 | 173.42 | 520.26 | Cash | 6 |
+| T1002 | 04-07-24 | Takoradi | Electronics | Charger | 7 | null | null | Mobile Money | 6 |
 
 
-transaction_id (new used approach)
-was to create new index column
-pad it
-use as transaction_id_new
+Data Cleaning Steps (Power Query Operations)
 
-transaction_id (final used approach)
-- traced back to initial step that preserved the order and fixed the column as follows:
-Split by Non-Digit to Digit
-Replace empty_string with T
-Fill Down on Digit column
-Merge Columns
-Rename
+Below are the data preparation and cleaning operations performed in Microsoft Power BI’s Power Query Editor:
+
+| Step | Column(s) Affected | Issue Identified | Cleaning Action | Justification |
+|------|--------------------|------------------|------------------|----------------|
+| 1 | `Date` | Inconsistent date formats (`07/01/2024`, `04-07-24`) | Converted all to **Date** type using conditional logic and helper columns | Ensures consistent and accurate date analysis |
+| 2 | `Transaction_ID` | Missing or inconsistent ID patterns | Split by non-digit/digit, replaced blanks with “T”, filled down, and merged columns | Maintained unique identifiers without disrupting data order |
+| 3 | `Quantity` | 9 missing values | Replaced nulls with **average value (6)** | Average used since range (1–10) had no outliers |
+| 4 | `Unit_Price` | 12 N/A and 22 missing values | Changed data type to decimal; imputed **median (₵307.30)** | Median chosen due to right-skew and presence of outliers |
+| 5 | `Total_Sales` | Missing and inconsistent types | Converted to decimal; imputed **median (₵1,446.15)** | Median provides robustness against extreme values |
+| 6 | `Payment_Method` | Inconsistent text casing | Transformed to **“Capitalize Each Word”** | Ensures uniform category labels (e.g., “Mobile Money”) |
+| 7 | `Customer_Satisfaction` | Mixed text/number formats; missing entries | Mapped text to numerical scale (1–6); replaced blanks with average rating per product using **Group By** and **Merge** | Standardized satisfaction ratings and retained data meaning |
+| 8 | All Text Columns | Extra spaces and inconsistent casing | Applied **Trim** and **Format as Proper Case** | Improved readability and prevented duplicates |
+| 9 | General | Checked for unique categories and duplicates | Verified uniqueness and removed redundant rows | Ensured data integrity |
+
+---
+
+## Power Query Transformations
+
+Date Correction Formula:
+```powerquery
+= if [#"Date - Copy"] = #date(1000, 1, 1) 
+then Date.FromText(Text.Middle([Date], 3, 2) & "/" & Text.Start([Date], 2) & "/" & Text.End([Date], 4)) 
+else [#" Date - Copy"]
+```
+
+**Customer Satisfaction Imputation (Conceptual Steps):**
+1. Group by `Product_Name` and compute **average rating**.
+2. Merge grouped table with main table (Left Outer Join).
+3. Add a custom column:
+   ```powerquery
+   if [Customer_Satisfaction] = null 
+   then [AverageRating] 
+   else [Customer_Satisfaction]
+   ```
+4. Rename new column → `Customer_Satisfaction_Filled`.
 
 
-date to date_filled
-fixed 85 roes with helper column
-duplicate column to Date - Copy
-in Date - Copy, change type to Date. replace Error to 1/1/1000
-Add custom column with formula
-	 ```= if [#"Date - Copy"] = #date(1000, 1, 1) then Date.FromText(Text.Middle([Date], 3, 2) & "/" & 	Text.Start([Date], 2) & "/" & Text.End([Date], 4)) else [#"Date - Copy"]```
-name Custom column date_filled . save. 
-delete unessarcy columns now
-rename to Date
+Challenges Faced
 
-Question On transaction_id: using new indexes can possibly disrupt the data.
+1. Inconsistent Transaction IDs:
+   - Some IDs were missing or malformed.
+   - Creating new index-based IDs risked disrupting the dataset’s original order, so a reconstruction method using split and merge logic was adopted.
 
-Challenges
-Debating New Ids as bad or not
+2. Mixed Date Formats:
+   - Various date structures (`07/01/2024`, `04-07-24`) caused errors during conversion.
+   - Required building a helper column and conditional transformation logic.
 
+3. Handling Missing Numerical Data:
+   - Several numeric columns had missing or skewed distributions.
+   - Median imputation was preferred to prevent distortion from outliers.
 
-after work is done
-Go after merge procedure for customer_satisfaction
+4. Text Inconsistencies:
+   - Variations in casing and spacing (e.g., “mobile money” vs. “Mobile Money”) affected grouping and visualization accuracy.
+
+5. Customer Satisfaction Mapping:
+   - Values existed both as text and numbers (e.g., “good” and “4”).
+   - Required developing a scale (1–6) and imputing missing values using average per product.
+
